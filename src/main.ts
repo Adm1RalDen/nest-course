@@ -5,5 +5,5 @@ import { SocketIoAdapter } from './socket-io.adapter';
 (async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
-  await app.listen(5000);
+  await app.listen(process.env.PORT || 5000);
 })();

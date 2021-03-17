@@ -14,16 +14,21 @@ import { UseGuards, UsePipes } from '@nestjs/common';
 import { WsGuard } from './ws.guard';
 import { ChatPipe } from './chat.pipe';
 import { JwtChatGuard } from './jwt-chat.guard';
+import { AuthService } from '../auth/auth.service';
 
 @WebSocketGateway()
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server;
 
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private authService: AuthService,
+  ) {}
 
-  @UseGuards(JwtChatGuard)
+  // @UseGuards(JwtChatGuard)
   async handleConnection(@ConnectedSocket() client: Socket) {
     client.join(client.handshake.auth.token);
+    const checked = await this.authService.checkToken('dsfasd');
     console.log('user is connected this', client.id);
     this.server.emit('users', {
       currentUser: client.id,
