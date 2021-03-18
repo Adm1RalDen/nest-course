@@ -5,6 +5,7 @@ import { User, UserSchema } from '../schemas/user.schema';
 import { AuthService } from '../auth/auth.service';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtChatStrategy } from './jwt-chat.strategy';
+import { Room, RoomSchema } from '../schemas/room.schema';
 
 @Module({
   providers: [ChatGateway, AuthService, JwtChatStrategy],
@@ -13,6 +14,12 @@ import { JwtChatStrategy } from './jwt-chat.strategy';
       {
         name: User.name,
         schema: UserSchema,
+      },
+    ]),
+    MongooseModule.forFeature([
+      {
+        name: Room.name,
+        schema: RoomSchema,
       },
     ]),
     JwtModule.register({

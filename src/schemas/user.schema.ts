@@ -19,7 +19,7 @@ export class User {
   status: string;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Room' }] })
-  roomsIds: Room;
+  roomsIds: Room[];
 
   @Prop()
   lastActivity: Date;
