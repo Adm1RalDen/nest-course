@@ -15,6 +15,7 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto) {
+    console.log(loginDto);
     const user = await this.userModel.findOne({ email: loginDto.email });
 
     if (!user) {
@@ -77,6 +78,10 @@ export class AuthService {
   }
 
   async checkToken(token: string) {
-    return this.jwtService.verify(token, { publicKey: 'secret code' });
+    try {
+      return this.jwtService.verify(token, { publicKey: 'secret code' });
+    } catch (err) {
+      return undefined;
+    }
   }
 }

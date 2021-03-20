@@ -30,7 +30,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async createNewContact(client, data) {
     const token = client.handshake.auth.token;
     const user = await this.authService.checkToken(token);
-
     if (data.userId && data.nickname) {
       const newContact = {
         userId: data.userId,
@@ -40,9 +39,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const currentUser = await this.userModel.findById(user.userId);
       const userObject = currentUser.toObject();
 
-      const checkedUserId = userObject.contacts.find(
-        (contact) => contact.userId === data.userId,
-      );
+      const checkedUserId = userObject.contacts.find((el) => {
+        return el.userId.toString() === data.userId;
+      });
 
       if (checkedUserId) {
         client.emit('error-message', 'this userId is exists');
@@ -64,11 +63,50 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage('createRoom')
+  async createNewRoom(client, content) {
+    console.log('start create new room', content);
+    const token = client.handshake.auth.token;
+    const user = await this.authService.checkToken(token);
+    if (!user) {
+      client.emit('error-message', 'user not found');
+    }
+    if (content.roomName && content.userId) {
+      const room = new this.roomModel({
+        name: content.roomName,
+      });
+      await room.save();
+
+      this.userModel.updateOne(
+        { _id: user.userId },
+        {
+          $push: {
+            roomsIds: room.id,
+          },
+        },
+        {},
+        this.done,
+      );
+      this.userModel.updateOne(
+        { _id: content.userId },
+        {
+          $push: {
+            roomsIds: room.id,
+          },
+        },
+        {},
+        this.done,
+      );
+      this.server.to(content.userId).emit('addedToNewRoom', room); // посилаєм комнату добавленому пользователю
+      client.emit('addedToNewRoom', room); // посилаєм данные о комнате пользователю который создал комнату
+    }
+  }
+
   done(err, res): any {
     if (err) {
       console.log(err.message);
     } else {
-      console.log('success');
+      console.log('success', res);
     }
   }
 
@@ -91,22 +129,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log('connected user', client.id);
     const token = client.handshake.auth.token;
     const fromToken = await this.authService.checkToken(token);
-
-    const user = await this.userModel.findOne({ _id: fromToken.userId });
-    const parsedUser = user.toObject();
-    client.join(parsedUser.roomsIds.map((e) => e.toString()));
-
-    this.roomModel.find(
-      {
-        _id: { $in: user.roomsIds },
-      },
-      (err, docks) => {
-        if (!err) {
-          client.emit('roomList', docks);
-        }
-      },
-    );
-
-    client.emit('catchUserData', user.toObject());
+    if (!fromToken) {
+      client.emit('error-message', 'token is not validated');
+    } else {
+      const user = await this.userModel.findOne({ _id: fromToken.userId });
+      if (user) {
+        this.roomModel.find(
+          {
+            _id: { $in: user.roomsIds },
+          },
+          (err, docks) => {
+            if (!err) {
+              client.emit('roomList', docks);
+            }
+          },
+        );
+        const parsedUser = user.toObject();
+        client.join(parsedUser.roomsIds.map((e) => e.toString()));
+        client.emit('catchUserData', user.toObject());
+      } else {
+        client.emit('error-message', 'user not found');
+      }
+    }
   }
 }
