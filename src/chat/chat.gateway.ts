@@ -12,8 +12,8 @@ import { User, UserDocument } from '../schemas/user.schema';
 import { Model } from 'mongoose';
 import { AuthService } from '../auth/auth.service';
 import { Room, RoomDocument } from '../schemas/room.schema';
-import { UsePipes } from '@nestjs/common';
-import { ChatPipe } from './chat.pipe';
+import { Message, MessageDocument } from '../schemas/message.schema';
+import { from } from 'rxjs';
 
 @WebSocketGateway()
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -22,8 +22,55 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Room.name) private roomModel: Model<RoomDocument>,
+    @InjectModel(Message.name) private messageModel: Model<MessageDocument>,
     private authService: AuthService,
   ) {}
+
+  @SubscribeMessage('getMessagesList')
+  async getMessageList(client, content) {
+    if (content.chatRoomId)
+      this.messageModel
+        .find({ chatRoomId: content.chatRoomId })
+        .sort('-timeSent')
+        .limit(10)
+        .lean()
+        .exec((err, messages) => {
+          if (!err) {
+            client.emit('listOfMessages', messages.reverse());
+          }
+        });
+    else {
+      client.emit('error', 'room not found');
+    }
+  }
+
+  @SubscribeMessage('newMessage')
+  async createNewMessage(client, content) {
+    const token = client.handshake.auth.token;
+    const user = await this.authService.checkToken(token);
+    if (!user) {
+      client.emit('error', 'token not validate');
+    } else {
+      console.log({ content });
+      if (content.message && content.roomId) {
+        try {
+          const newMSG = {
+            content: content.message,
+            userId: user.userId,
+            chatRoomId: content.roomId,
+          };
+          const message = new this.messageModel(newMSG);
+          await message.save();
+
+          this.server.to(content.roomId).emit('newMessage', message);
+        } catch (e) {
+          client.emit('error', e.message);
+        }
+      } else {
+        client.emit('error', 'room not found or message');
+      }
+    }
+  }
 
   // @UsePipes(ChatPipe)
   @SubscribeMessage('createNewContact')
@@ -106,15 +153,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (err) {
       console.log(err.message);
     } else {
-      console.log('success', res);
+      console.log('success done');
     }
   }
 
   @SubscribeMessage('getContactList')
-  async getContactList(client, message) {
-    // console.log();
-    // client.broadcast.emit('chat', message);
+  async getContactList(client) {
+    try {
+      const token = client.handshake.auth.token;
+      const user = await this.authService.checkToken(token);
+      const userData = await this.userModel.findOne({ _id: user.userId });
+      client.emit('gotContactList', userData.contacts);
+    } catch (e) {
+      client.emit('error-message', e.message);
+    }
   }
+
+  // @SubscribeMessage('getMessagesList')
+  // async getMessageList(client, token) {}
 
   @SubscribeMessage('chat')
   async onChat(client, message) {
@@ -145,6 +201,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           },
         );
         const parsedUser = user.toObject();
+        client.join(fromToken.userId);
         client.join(parsedUser.roomsIds.map((e) => e.toString()));
         client.emit('catchUserData', user.toObject());
       } else {
