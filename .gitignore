@@ -5,6 +5,8 @@ node_modules
 client/node_modules
 client/build
 /client/build
+/client/out
+
 # Logs
 logs
 *.log

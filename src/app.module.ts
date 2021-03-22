@@ -11,7 +11,7 @@ import { ChatModule } from './chat/chat.module';
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'client', 'build', 'server', 'pages'),
+      rootPath: join(__dirname, '..', 'client', 'out'),
     }),
     MongooseModule.forRoot(
       'mongodb+srv://admin:admin@cluster0.yiowt.mongodb.net/nest?retryWrites=true&w=majority',
