@@ -13,7 +13,6 @@ import { Model } from 'mongoose';
 import { AuthService } from '../auth/auth.service';
 import { Room, RoomDocument } from '../schemas/room.schema';
 import { Message, MessageDocument } from '../schemas/message.schema';
-import { from } from 'rxjs';
 
 @WebSocketGateway()
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -72,7 +71,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  // @UsePipes(ChatPipe)
   @SubscribeMessage('createNewContact')
   async createNewContact(client, data) {
     const token = client.handshake.auth.token;
@@ -168,9 +166,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.emit('error-message', e.message);
     }
   }
-
-  // @SubscribeMessage('getMessagesList')
-  // async getMessageList(client, token) {}
 
   @SubscribeMessage('chat')
   async onChat(client, message) {
