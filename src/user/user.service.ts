@@ -59,6 +59,7 @@ export class UserService {
             console.log({ err, res });
           },
         );
+        return this.getContactList(req);
       }
     } else {
       throw new BadRequestException();
