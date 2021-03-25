@@ -19,7 +19,7 @@ export class User {
   status: string;
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Room' }] })
-  roomsIds: Room[];
+  roomsIds: string[];
 
   @Prop()
   lastActivity: Date;
@@ -34,7 +34,7 @@ export class User {
   })
   contacts: [
     {
-      userId: User;
+      userId: string;
       nickname: string;
     },
   ];
